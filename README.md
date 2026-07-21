@@ -7,7 +7,7 @@ rule, optional custom WAF rules, and DNSSEC. Works with the Cloudflare **v5**
 provider.
 
 Everything here is available on the Cloudflare **Free plan**. The full OWASP/Managed
-WAF is Pro+ and is intentionally **not** deployed — Cloudflare auto-applies the Free
+WAF is Pro+ and is intentionally **not** deployed, Cloudflare auto-applies the Free
 Managed Ruleset on free zones.
 
 ## Usage
@@ -22,7 +22,7 @@ module "hardening" {
   name_prefix             = "mysite"
   content_security_policy = "default-src 'self'; frame-ancestors 'none'"
 
-  # Free tier allows ONE rate-limit rule — put it on the abuse-prone path.
+  # Free tier allows ONE rate-limit rule, put it on the abuse-prone path.
   rate_limit = {
     expression = "(http.request.uri.path eq \"/api/waitlist\" and http.request.method eq \"POST\")"
     requests   = 10
@@ -58,7 +58,7 @@ record you must add at your registrar (a manual step).
 
 | Name | Default | Description |
 |---|---|---|
-| `zone_id` | — | Zone to harden (required) |
+| `zone_id` | _required_ | Zone to harden (required) |
 | `name_prefix` | `hardening` | Prefix for the ruleset names |
 | `manage_zone_settings` | `true` | Apply the TLS/security zone settings |
 | `zone_settings` | `{}` | `setting_id => value` overrides/extras |

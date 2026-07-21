@@ -1,7 +1,7 @@
 # Free-tier Cloudflare zone hardening: TLS/security settings, security response
 # headers, one rate-limit rule, optional custom WAF rules, and DNSSEC.
 # Everything here is available on the Cloudflare Free plan. The full managed WAF
-# (OWASP) is Pro+ and intentionally NOT deployed here — the Free Managed Ruleset
+# (OWASP) is Pro+ and intentionally NOT deployed here, the Free Managed Ruleset
 # is applied automatically by Cloudflare on free zones.
 
 locals {
