@@ -83,3 +83,54 @@ variable "enable_dnssec" {
   default     = true
   description = "Enable DNSSEC. Outputs the DS record to add at your registrar (manual step)."
 }
+
+# ── DNS-based hardening (CAA, email anti-spoofing) ────────────────────────
+# These write DNS records, so they need the zone's apex name as well as its id.
+
+variable "zone_name" {
+  type        = string
+  default     = null
+  description = "Apex domain of the zone (e.g. example.com). Required when any DNS-based hardening below is enabled, because those records are written at or under the apex."
+}
+
+variable "caa_issuers" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    CA domains allowed to issue certificates for this zone, written as CAA issue
+    and issuewild records.
+
+    If the zone uses Cloudflare Universal SSL, this MUST include every Cloudflare
+    partner CA or certificate renewal breaks: letsencrypt.org, pki.goog, ssl.com,
+    sectigo.com. Empty list writes no CAA records, which leaves issuance open to
+    any CA.
+  EOT
+}
+
+variable "dmarc_policy" {
+  type        = string
+  default     = null
+  description = "DMARC policy published at _dmarc.<zone_name>: none (monitor only), quarantine, or reject. Start at none on a domain that sends mail, and move up once the aggregate reports show SPF and DKIM aligning. Use reject immediately on a domain that never sends. null writes no record."
+  validation {
+    condition     = var.dmarc_policy == null || contains(["none", "quarantine", "reject"], coalesce(var.dmarc_policy, "none"))
+    error_message = "dmarc_policy must be null or one of: none, quarantine, reject."
+  }
+}
+
+variable "dmarc_rua" {
+  type        = string
+  default     = null
+  description = "Aggregate report destination for DMARC (e.g. mailto:dmarc@example.com). Must be an inbox someone actually reads, otherwise the reports are wasted. Omitted from the record when null."
+}
+
+variable "apex_spf" {
+  type        = string
+  default     = null
+  description = "SPF TXT value published at the apex. Use 'v=spf1 -all' on a domain that never sends mail, so it cannot be spoofed. Leave null on a domain that sends via subdomains, so an existing apex SPF is not clobbered."
+}
+
+variable "manage_null_mx" {
+  type        = bool
+  default     = false
+  description = "Publish a null MX ('.' at priority 0, RFC 7505) at the apex, declaring that the domain accepts no mail. Only for non-mail domains."
+}

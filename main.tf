@@ -1,5 +1,6 @@
 # Free-tier Cloudflare zone hardening: TLS/security settings, security response
-# headers, one rate-limit rule, optional custom WAF rules, and DNSSEC.
+# headers, one rate-limit rule, optional custom WAF rules, DNSSEC, and the
+# DNS-based controls (CAA pinning plus DMARC, SPF and null MX anti-spoofing).
 # Everything here is available on the Cloudflare Free plan. The full managed WAF
 # (OWASP) is Pro+ and intentionally NOT deployed here, the Free Managed Ruleset
 # is applied automatically by Cloudflare on free zones.
@@ -106,4 +107,96 @@ resource "cloudflare_ruleset" "custom_firewall" {
 resource "cloudflare_zone_dnssec" "this" {
   count   = var.enable_dnssec ? 1 : 0
   zone_id = var.zone_id
+}
+
+# ── DNS-based hardening: CAA + email anti-spoofing ────────────────────────
+# Free tier. These need var.zone_name as well as var.zone_id, because they are
+# written at or under the apex.
+
+check "dns_hardening_needs_zone_name" {
+  assert {
+    condition = (
+      var.zone_name != null
+      || (
+        length(var.caa_issuers) == 0
+        && var.dmarc_policy == null
+        && var.apex_spf == null
+        && !var.manage_null_mx
+      )
+    )
+    error_message = "zone_name is required when caa_issuers, dmarc_policy, apex_spf or manage_null_mx is set: those records are written at or under the apex, and the zone id alone does not give the name."
+  }
+}
+
+# CAA. issue covers the apex certificate, issuewild the wildcard that Universal
+# SSL also provisions, so both are written for every allowed CA.
+resource "cloudflare_dns_record" "caa_issue" {
+  for_each = toset(var.caa_issuers)
+
+  zone_id = var.zone_id
+  name    = var.zone_name
+  type    = "CAA"
+  ttl     = 1
+  comment = "${var.name_prefix}: restrict certificate issuance"
+  data = {
+    flags = 0
+    tag   = "issue"
+    value = each.value
+  }
+}
+
+resource "cloudflare_dns_record" "caa_issuewild" {
+  for_each = toset(var.caa_issuers)
+
+  zone_id = var.zone_id
+  name    = var.zone_name
+  type    = "CAA"
+  ttl     = 1
+  comment = "${var.name_prefix}: restrict wildcard certificate issuance"
+  data = {
+    flags = 0
+    tag   = "issuewild"
+    value = each.value
+  }
+}
+
+# DMARC. Without it, receivers cannot act on SPF/DKIM alignment, so the domain
+# can be spoofed even when both are configured.
+resource "cloudflare_dns_record" "dmarc" {
+  count = var.dmarc_policy != null ? 1 : 0
+
+  zone_id = var.zone_id
+  name    = "_dmarc.${var.zone_name}"
+  type    = "TXT"
+  ttl     = 1
+  comment = "${var.name_prefix}: DMARC policy"
+  content = join("; ", concat(
+    ["v=DMARC1", "p=${var.dmarc_policy}"],
+    var.dmarc_rua != null ? ["rua=${var.dmarc_rua}"] : [],
+  ))
+}
+
+# Apex SPF, for a domain declared as a non-sender.
+resource "cloudflare_dns_record" "apex_spf" {
+  count = var.apex_spf != null ? 1 : 0
+
+  zone_id = var.zone_id
+  name    = var.zone_name
+  type    = "TXT"
+  ttl     = 1
+  comment = "${var.name_prefix}: apex SPF"
+  content = var.apex_spf
+}
+
+# Null MX (RFC 7505): states that the domain accepts no mail.
+resource "cloudflare_dns_record" "null_mx" {
+  count = var.manage_null_mx ? 1 : 0
+
+  zone_id  = var.zone_id
+  name     = var.zone_name
+  type     = "MX"
+  ttl      = 1
+  content  = "."
+  priority = 0
+  comment  = "${var.name_prefix}: null MX, domain sends and receives no mail"
 }
