@@ -55,7 +55,7 @@ To sign this Corporate CLA:
 1. Copy this document.
 2. Fill in the schedule below.
 3. Have an authorised representative of the Corporation sign it.
-4. Email the signed document to: **security@protocortex.ai**
+4. Email the signed document to: **hello@zeroconfig.io**
 
 The Maintainer will add the Corporation and its Designated Employees to the [contributors file](.github/CONTRIBUTORS.md).
 
