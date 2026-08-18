@@ -12,8 +12,18 @@ variable "name_prefix" {
 # ── Zone TLS / security settings (all free tier) ──────────────────────────
 variable "manage_zone_settings" {
   type        = bool
-  default     = true
-  description = "Manage the baseline TLS/security zone settings."
+  description = <<-EOT
+    Apply the baseline TLS and security zone settings.
+
+    Leave null (the default) to inherit this module's choice, which is on. Set
+    it explicitly only to force it off.
+
+    Null exists so a caller can express "unset" instead of pinning a copy of the
+    default. A passthrough variable that carries its own default silently beats
+    the value here whenever this module is strengthened, and it does so in the
+    weakening direction.
+  EOT
+  default     = null
 }
 
 variable "zone_settings" {
@@ -25,14 +35,33 @@ variable "zone_settings" {
 # ── Security response headers (Transform Rule; free tier) ──────────────────
 variable "manage_security_headers" {
   type        = bool
-  default     = true
-  description = "Add a response-header Transform Rule (HSTS, X-CTO, X-Frame-Options, Referrer-Policy, Permissions-Policy)."
+  description = <<-EOT
+    Add the response-header transform rule.
+
+    Leave null (the default) to inherit this module's choice, which is on. Set
+    it explicitly only to force it off, for example where the origin already
+    serves an equal or stronger set and varies headers per path.
+
+    See manage_zone_settings for why null rather than a literal default.
+  EOT
+  default     = null
 }
 
 variable "hsts_max_age" {
   type        = number
-  default     = 63072000
-  description = "Strict-Transport-Security max-age (seconds). Defaults to two years, the value the HSTS preload list expects; the common one year is enough to be accepted but leaves a shorter window of protection. 0 disables the HSTS header. Note that includeSubDomains is always sent, so every subdomain must serve HTTPS before enabling this."
+  description = <<-EOT
+    Strict-Transport-Security max-age in seconds. 0 disables the header.
+
+    Leave null (the default) to inherit this module's value, currently two
+    years, which is what the HSTS preload list expects. The common one year is
+    enough to be accepted but leaves a shorter window of protection.
+
+    Pinning a number here is what silently halves the window when this module
+    raises its default, so prefer null unless you specifically need a different
+    value. Note that includeSubDomains is always sent, so every subdomain must
+    serve HTTPS before enabling the headers.
+  EOT
+  default     = null
 }
 
 variable "content_security_policy" {

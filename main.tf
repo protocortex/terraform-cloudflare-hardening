@@ -6,6 +6,17 @@
 # is applied automatically by Cloudflare on free zones.
 
 locals {
+  # ── Effective variable resolution ──
+  # These three inputs default to null so a caller can say "unset" and inherit
+  # whatever this module considers strong, rather than pinning a copy that goes
+  # stale. A passthrough variable carrying its own default silently beats the
+  # value here, and it does so in the weakening direction, which is how a
+  # consumer once cut its own HSTS window in half on a module upgrade.
+  # Resources below read local.eff_* and never var.* for these.
+  eff_manage_zone_settings    = var.manage_zone_settings != null ? var.manage_zone_settings : true
+  eff_manage_security_headers = var.manage_security_headers != null ? var.manage_security_headers : true
+  eff_hsts_max_age            = var.hsts_max_age != null ? var.hsts_max_age : 63072000
+
   # Baseline TLS/security settings, all free tier. Override via var.zone_settings.
   default_zone_settings = {
     ssl                      = "strict" # Full (Strict)
@@ -16,7 +27,7 @@ locals {
     opportunistic_encryption = "on"
     browser_check            = "on"
   }
-  effective_zone_settings = var.manage_zone_settings ? merge(local.default_zone_settings, var.zone_settings) : {}
+  effective_zone_settings = local.eff_manage_zone_settings ? merge(local.default_zone_settings, var.zone_settings) : {}
 
   # Security response headers (name => value), assembled from fixed defaults +
   # conditional HSTS/CSP + caller extras.
@@ -30,7 +41,7 @@ locals {
       "Referrer-Policy"    = "strict-origin-when-cross-origin"
       "Permissions-Policy" = "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()"
     },
-    var.hsts_max_age > 0 ? { "Strict-Transport-Security" = "max-age=${var.hsts_max_age}; includeSubDomains; preload" } : {},
+    local.eff_hsts_max_age > 0 ? { "Strict-Transport-Security" = "max-age=${local.eff_hsts_max_age}; includeSubDomains; preload" } : {},
     var.content_security_policy != null ? { "Content-Security-Policy" = var.content_security_policy } : {},
     var.extra_response_headers,
   )
@@ -51,7 +62,7 @@ resource "cloudflare_zone_setting" "this" {
 
 # ── Security response headers (Transform Rule) ────────────────────────────
 resource "cloudflare_ruleset" "security_headers" {
-  count = var.manage_security_headers ? 1 : 0
+  count = local.eff_manage_security_headers ? 1 : 0
 
   zone_id = var.zone_id
   name    = "${var.name_prefix}-security-headers"

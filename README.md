@@ -59,6 +59,11 @@ module "hardening" {
 output "dnssec_ds" { value = module.hardening.dnssec }
 ```
 
+Prefer leaving `manage_zone_settings`, `manage_security_headers` and `hsts_max_age` at
+`null` rather than repeating their values. Null means "use whatever this module considers
+strong", so a later release that strengthens a default reaches you. A pinned copy does not,
+and it fails in the weakening direction.
+
 The **provider is configured by the caller**, not the module. DNSSEC returns a DS
 record you must add at your registrar (a manual step).
 
@@ -81,10 +86,10 @@ record you must add at your registrar (a manual step).
 |---|---|---|
 | `zone_id` | _required_ | Zone to harden (required) |
 | `name_prefix` | `hardening` | Prefix for the ruleset names |
-| `manage_zone_settings` | `true` | Apply the TLS/security zone settings |
+| `manage_zone_settings` | `null` (on) | Apply the TLS/security zone settings. null inherits the module default |
 | `zone_settings` | `{}` | `setting_id => value` overrides/extras |
-| `manage_security_headers` | `true` | Add the response-header Transform Rule |
-| `hsts_max_age` | `63072000` | HSTS max-age, two years, what the preload list expects (0 disables the header) |
+| `manage_security_headers` | `null` (on) | Add the response-header Transform Rule. null inherits the module default |
+| `hsts_max_age` | `null` (2 years) | HSTS max-age. null inherits the module default, currently 63072000, what the preload list expects (0 disables) |
 | `content_security_policy` | `null` | Optional CSP header value |
 | `extra_response_headers` | `{}` | Extra `name => value` headers |
 | `omit_response_headers` | `[]` | Header names to leave to the origin, for headers it varies per path |
