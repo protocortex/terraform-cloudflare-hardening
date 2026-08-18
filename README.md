@@ -87,6 +87,7 @@ record you must add at your registrar (a manual step).
 | `hsts_max_age` | `63072000` | HSTS max-age, two years, what the preload list expects (0 disables the header) |
 | `content_security_policy` | `null` | Optional CSP header value |
 | `extra_response_headers` | `{}` | Extra `name => value` headers |
+| `omit_response_headers` | `[]` | Header names to leave to the origin, for headers it varies per path |
 | `rate_limit` | `null` | One rate-limit rule (see example) |
 | `custom_firewall_rules` | `[]` | Up to 5 custom WAF rules |
 | `enable_dnssec` | `true` | Enable DNSSEC |

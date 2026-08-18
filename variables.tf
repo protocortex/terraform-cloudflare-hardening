@@ -41,6 +41,24 @@ variable "content_security_policy" {
   description = "Optional Content-Security-Policy value. Null omits the CSP header."
 }
 
+variable "omit_response_headers" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    Header names to leave out of the managed set entirely, so the origin keeps
+    control of them.
+
+    Needed when the origin varies a header per path, which a single transform
+    rule cannot express. The motivating case: a site that sends
+    Referrer-Policy: no-referrer only on pages whose URL carries a signed token,
+    and the ordinary policy everywhere else. This rule runs after the origin
+    response and uses "set", so without omitting it the stricter per-path value
+    would be silently overwritten and the token would leak in the Referer.
+
+    Names match the base set exactly, e.g. "Referrer-Policy".
+  EOT
+}
+
 variable "extra_response_headers" {
   type        = map(string)
   default     = {}
