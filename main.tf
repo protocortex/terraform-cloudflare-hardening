@@ -34,7 +34,10 @@ locals {
     var.content_security_policy != null ? { "Content-Security-Policy" = var.content_security_policy } : {},
     var.extra_response_headers,
   )
-  response_headers = { for name, value in local.base_headers : name => { operation = "set", value = value } }
+  # Omitted headers are dropped before the rule is built, leaving them to the
+  # origin. See var.omit_response_headers for why that is sometimes required.
+  managed_headers  = { for name, value in local.base_headers : name => value if !contains(var.omit_response_headers, name) }
+  response_headers = { for name, value in local.managed_headers : name => { operation = "set", value = value } }
 }
 
 # ── Zone TLS / security settings ──────────────────────────────────────────
