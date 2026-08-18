@@ -3,8 +3,9 @@
 
 Reusable OpenTofu/Terraform module that applies a **free-tier** security baseline to
 a Cloudflare zone: TLS/security settings, security response headers, a rate-limit
-rule, optional custom WAF rules, and DNSSEC. Works with the Cloudflare **v5**
-provider.
+rule, optional custom WAF rules, DNSSEC, and the DNS records that carry the rest
+of a zone's posture (CAA pinning, plus DMARC, SPF and null MX anti-spoofing).
+Works with the Cloudflare **v5** provider.
 
 Everything here is available on the Cloudflare **Free plan**. The full OWASP/Managed
 WAF is Pro+ and is intentionally **not** deployed, Cloudflare auto-applies the Free
@@ -16,8 +17,11 @@ Managed Ruleset on free zones.
 provider "cloudflare" {} # configure via CLOUDFLARE_API_TOKEN
 
 module "hardening" {
-  source  = "git::https://github.com/protocortex/terraform-cloudflare-hardening.git?ref=v0.1.0"
+  source  = "git::https://github.com/protocortex/terraform-cloudflare-hardening.git?ref=v0.2.0"
   zone_id = "<zone id>"
+
+  # Required for the DNS-based hardening below, which writes records at the apex.
+  zone_name = "example.com"
 
   name_prefix             = "mysite"
   content_security_policy = "default-src 'self'; frame-ancestors 'none'"
@@ -28,6 +32,20 @@ module "hardening" {
     requests   = 10
     period     = 60
   }
+
+  # Pin certificate issuance. On a zone using Universal SSL this MUST list every
+  # Cloudflare partner CA, or renewal breaks.
+  caa_issuers = ["letsencrypt.org", "pki.goog", "ssl.com", "sectigo.com"]
+
+  # Email anti-spoofing. Start DMARC at "none" on a domain that sends mail and
+  # tighten once the reports show SPF and DKIM aligning.
+  dmarc_policy = "none"
+  dmarc_rua    = "mailto:dmarc@example.com"
+
+  # On a domain that never sends mail, declare it: SPF -all, a null MX, and
+  # DMARC "reject".
+  # apex_spf       = "v=spf1 -all"
+  # manage_null_mx = true
 
   # Free tier allows up to 5 custom WAF rules.
   custom_firewall_rules = [{
@@ -53,6 +71,9 @@ record you must add at your registrar (a manual step).
 | `cloudflare_ruleset` (`http_ratelimit`) | one rate-limit rule (the free-tier cap) |
 | `cloudflare_ruleset` (`http_request_firewall_custom`) | up to 5 custom WAF rules |
 | `cloudflare_zone_dnssec` | DNSSEC (outputs the DS record) |
+| `cloudflare_dns_record` (CAA × 2N) | `issue` + `issuewild` pinning, one pair per allowed CA |
+| `cloudflare_dns_record` (TXT) | DMARC policy at `_dmarc.<zone_name>`, and an optional apex SPF |
+| `cloudflare_dns_record` (MX) | optional null MX (RFC 7505), for a domain that accepts no mail |
 
 ## Key inputs
 
@@ -69,6 +90,12 @@ record you must add at your registrar (a manual step).
 | `rate_limit` | `null` | One rate-limit rule (see example) |
 | `custom_firewall_rules` | `[]` | Up to 5 custom WAF rules |
 | `enable_dnssec` | `true` | Enable DNSSEC |
+| `zone_name` | `null` | Apex domain. **Required** when any DNS-based input below is set |
+| `caa_issuers` | `[]` | CAs allowed to issue certs. Must include every Cloudflare partner CA on a Universal SSL zone |
+| `dmarc_policy` | `null` | `none`, `quarantine` or `reject`, published at `_dmarc.<zone_name>` |
+| `dmarc_rua` | `null` | Aggregate report destination, e.g. `mailto:dmarc@example.com` |
+| `apex_spf` | `null` | Apex SPF value, e.g. `v=spf1 -all` on a non-sending domain |
+| `manage_null_mx` | `false` | Publish a null MX, declaring the domain accepts no mail |
 
 ## Outputs
 
