@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# terraform-cloudflare-hardening
+# terraform-cloudflare-security-zone
 
 Reusable OpenTofu/Terraform module that applies a **free-tier** security baseline to
 a Cloudflare zone: TLS/security settings, security response headers, a rate-limit
@@ -17,7 +17,7 @@ Managed Ruleset on free zones.
 provider "cloudflare" {} # configure via CLOUDFLARE_API_TOKEN
 
 module "hardening" {
-  source  = "git::https://github.com/protocortex/terraform-cloudflare-hardening.git?ref=v0.2.0"
+  source  = "git::https://github.com/protocortex/terraform-cloudflare-security-zone.git?ref=v0.2.0"
   zone_id = "<zone id>"
 
   # Required for the DNS-based hardening below, which writes records at the apex.
