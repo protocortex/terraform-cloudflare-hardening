@@ -31,8 +31,8 @@ variable "manage_security_headers" {
 
 variable "hsts_max_age" {
   type        = number
-  default     = 31536000
-  description = "Strict-Transport-Security max-age (seconds). 0 disables the HSTS header."
+  default     = 63072000
+  description = "Strict-Transport-Security max-age (seconds). Defaults to two years, the value the HSTS preload list expects; the common one year is enough to be accepted but leaves a shorter window of protection. 0 disables the HSTS header. Note that includeSubDomains is always sent, so every subdomain must serve HTTPS before enabling this."
 }
 
 variable "content_security_policy" {

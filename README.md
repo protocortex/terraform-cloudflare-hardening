@@ -67,7 +67,7 @@ record you must add at your registrar (a manual step).
 | Resource | Purpose |
 |---|---|
 | `cloudflare_zone_setting` × N | Full(Strict) SSL, min TLS 1.2, TLS 1.3, Always-HTTPS, Auto-HTTPS-Rewrites, Opportunistic Encryption, Browser Check |
-| `cloudflare_ruleset` (`http_response_headers_transform`) | HSTS + `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, optional CSP |
+| `cloudflare_ruleset` (`http_response_headers_transform`) | HSTS (2y, `includeSubDomains`, `preload`) + `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, a six-directive `Permissions-Policy`, optional CSP |
 | `cloudflare_ruleset` (`http_ratelimit`) | one rate-limit rule (the free-tier cap) |
 | `cloudflare_ruleset` (`http_request_firewall_custom`) | up to 5 custom WAF rules |
 | `cloudflare_zone_dnssec` | DNSSEC (outputs the DS record) |
@@ -84,7 +84,7 @@ record you must add at your registrar (a manual step).
 | `manage_zone_settings` | `true` | Apply the TLS/security zone settings |
 | `zone_settings` | `{}` | `setting_id => value` overrides/extras |
 | `manage_security_headers` | `true` | Add the response-header Transform Rule |
-| `hsts_max_age` | `31536000` | HSTS max-age (0 disables the header) |
+| `hsts_max_age` | `63072000` | HSTS max-age, two years, what the preload list expects (0 disables the header) |
 | `content_security_policy` | `null` | Optional CSP header value |
 | `extra_response_headers` | `{}` | Extra `name => value` headers |
 | `rate_limit` | `null` | One rate-limit rule (see example) |
