@@ -64,7 +64,7 @@ I have read the CLA Document and I hereby sign the CLA.
 
 The CLA bot will record your signature in [CONTRIBUTORS.md](CONTRIBUTORS.md). You only need to do this once across all repositories maintained by igorjs.
 
-**Corporate contributors:** If you are contributing on behalf of your employer, your organisation must sign the [Corporate CLA](CCLA.md). Email the signed document to security@protocortex.ai. Individual employees listed as Designated Employees do not need to sign the Individual CLA separately.
+**Corporate contributors:** If you are contributing on behalf of your employer, your organisation must sign the [Corporate CLA](CCLA.md). Email the signed document to hello@zeroconfig.io. Individual employees listed as Designated Employees do not need to sign the Individual CLA separately.
 
 ## Commits
 
