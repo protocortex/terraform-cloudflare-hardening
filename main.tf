@@ -23,9 +23,12 @@ locals {
   base_headers = merge(
     {
       "X-Content-Type-Options" = "nosniff"
-      "X-Frame-Options"        = "SAMEORIGIN"
-      "Referrer-Policy"        = "strict-origin-when-cross-origin"
-      "Permissions-Policy"     = "geolocation=(), microphone=(), camera=()"
+      # DENY, not SAMEORIGIN. A hardening module should refuse framing outright;
+      # a caller that genuinely frames its own pages can relax it through
+      # extra_response_headers.
+      "X-Frame-Options"    = "DENY"
+      "Referrer-Policy"    = "strict-origin-when-cross-origin"
+      "Permissions-Policy" = "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()"
     },
     var.hsts_max_age > 0 ? { "Strict-Transport-Security" = "max-age=${var.hsts_max_age}; includeSubDomains; preload" } : {},
     var.content_security_policy != null ? { "Content-Security-Policy" = var.content_security_policy } : {},
