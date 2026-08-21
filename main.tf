@@ -124,6 +124,20 @@ resource "cloudflare_ruleset" "custom_firewall" {
 resource "cloudflare_zone_dnssec" "this" {
   count   = var.enable_dnssec ? 1 : 0
   zone_id = var.zone_id
+
+  # Pinned, NOT left to default. In the v5 provider `status` is Optional but not
+  # Computed, so omitting it makes the desired value null while the API reports
+  # "active". That is a permanent diff: every plan showed this resource as
+  # "will be updated in-place" with status going "active" -> null and all ten
+  # computed attributes (ds, digest, key_tag, public_key, ...) becoming "known
+  # after apply", on every zone, forever.
+  #
+  # Not cosmetic. The DS record is published at the registrar, so an apply that
+  # actually pushed status away from active would break DNSSEC validation and
+  # take the domain down for validating resolvers, with recovery gated on
+  # registry DS TTLs. It also trained readers to skim past a real diff on a
+  # DNS-critical resource, and buried genuine changes in permanent noise.
+  status = "active"
 }
 
 # ── DNS-based hardening: CAA + email anti-spoofing ────────────────────────
