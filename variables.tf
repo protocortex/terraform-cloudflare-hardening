@@ -170,9 +170,100 @@ variable "dmarc_policy" {
   }
 }
 
-variable "dmarc_rua" {
+variable "dmarc_sp" {
   type        = string
   default     = null
+  description = "Policy for SUBDOMAINS of this zone: none, quarantine, or reject. null omits the tag, and subdomains then inherit dmarc_policy. Set this explicitly when the apex and its subdomains have different sending profiles, e.g. an apex that sends via an ESP and subdomains that never send at all, which can go straight to reject."
+  validation {
+    condition     = var.dmarc_sp == null || contains(["none", "quarantine", "reject"], coalesce(var.dmarc_sp, "none"))
+    error_message = "dmarc_sp must be null or one of: none, quarantine, reject."
+  }
+}
+
+variable "dmarc_adkim" {
+  type        = string
+  default     = null
+  description = "DKIM alignment: r (relaxed, the DMARC default) or s (strict). Relaxed lets a subdomain's DKIM signature satisfy the parent. Strict requires the d= domain to equal the From domain exactly, which breaks an ESP that signs with a subdomain. null omits the tag and takes the relaxed default."
+  validation {
+    condition     = var.dmarc_adkim == null || contains(["r", "s"], coalesce(var.dmarc_adkim, "r"))
+    error_message = "dmarc_adkim must be null, r (relaxed) or s (strict)."
+  }
+}
+
+variable "dmarc_aspf" {
+  type        = string
+  default     = null
+  description = "SPF alignment: r (relaxed, the DMARC default) or s (strict). Same trade-off as dmarc_adkim: strict requires the envelope sender domain to match the From domain exactly. null omits the tag and takes the relaxed default."
+  validation {
+    condition     = var.dmarc_aspf == null || contains(["r", "s"], coalesce(var.dmarc_aspf, "r"))
+    error_message = "dmarc_aspf must be null, r (relaxed) or s (strict)."
+  }
+}
+
+variable "dmarc_pct" {
+  type        = number
+  default     = null
+  description = "Percentage of failing mail the policy applies to, 0 to 100. Use it to ramp a tightening policy, e.g. reject at pct=10 before pct=100. Deprecated in DMARCbis but still honoured widely. null omits the tag, which means 100."
+  validation {
+    condition     = var.dmarc_pct == null || (var.dmarc_pct >= 0 && var.dmarc_pct <= 100 && floor(var.dmarc_pct) == var.dmarc_pct)
+    error_message = "dmarc_pct must be null or a whole number between 0 and 100."
+  }
+}
+
+variable "dmarc_ruf" {
+  type    = string
+  default = null
+
+  validation {
+    condition     = var.dmarc_ruf == null || can(regex("^(mailto:|https://)", coalesce(var.dmarc_ruf, "mailto:x@y")))
+    error_message = "dmarc_ruf must be a URI, e.g. mailto:dmarc-forensics@example.com. A bare email address is silently ignored by reporting agents."
+  }
+  description = "Destination for FORENSIC (per-message failure) reports, e.g. mailto:dmarc-forensics@example.com. Think before setting this: these reports can carry message headers and content from real mail, so the inbox inherits that sensitivity, and most large providers never send them anyway. Aggregate reports via dmarc_rua are the ones that carry the useful signal. null omits the tag."
+}
+
+variable "dmarc_fo" {
+  type        = string
+  default     = null
+  description = "When to generate forensic reports: 0 (all underlying checks failed), 1 (any check failed), d (DKIM failed), s (SPF failed), or a colon-joined set such as \"d:s\". Only has effect when dmarc_ruf is set. null omits the tag, which means 0."
+  validation {
+    condition     = var.dmarc_fo == null || can(regex("^[01ds](:[01ds])*$", coalesce(var.dmarc_fo, "0")))
+    error_message = "dmarc_fo must be null, or 0/1/d/s optionally colon-joined (e.g. \"1\", \"d:s\")."
+  }
+}
+
+variable "dmarc_rf" {
+  type        = string
+  default     = null
+  description = "Forensic report format. afrf is the only format in practice. null omits the tag."
+  validation {
+    condition     = var.dmarc_rf == null || contains(["afrf"], coalesce(var.dmarc_rf, "afrf"))
+    error_message = "dmarc_rf must be null or afrf."
+  }
+}
+
+variable "dmarc_ri" {
+  type        = number
+  default     = null
+  description = "Requested interval between aggregate reports, in seconds. 86400 (daily) is the default and effectively the only value providers honour. null omits the tag."
+  validation {
+    condition     = var.dmarc_ri == null || (var.dmarc_ri > 0 && floor(var.dmarc_ri) == var.dmarc_ri)
+    error_message = "dmarc_ri must be null or a positive whole number of seconds."
+  }
+}
+
+variable "dmarc_rua" {
+  type    = string
+  default = null
+
+  # A bare address is the classic DMARC typo. RFC 7489 requires a URI, so
+  # "dmarc@example.com" without the mailto: scheme is silently ignored by
+  # reporters: the record still parses, the policy still applies, and no report
+  # ever arrives. Failing at plan time is far better than discovering months
+  # later that the inbox was empty for a reason.
+  validation {
+    condition     = var.dmarc_rua == null || can(regex("^(mailto:|https://)", coalesce(var.dmarc_rua, "mailto:x@y")))
+    error_message = "dmarc_rua must be a URI, e.g. mailto:dmarc@example.com. A bare email address is silently ignored by reporting agents."
+  }
   description = "Aggregate report destination for DMARC (e.g. mailto:dmarc@example.com). Must be an inbox someone actually reads, otherwise the reports are wasted. Omitted from the record when null."
 }
 

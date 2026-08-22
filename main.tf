@@ -250,6 +250,13 @@ resource "cloudflare_dns_record" "caa_issuewild" {
 
 # DMARC. Without it, receivers cannot act on SPF/DKIM alignment, so the domain
 # can be spoofed even when both are configured.
+check "dmarc_fo_needs_ruf" {
+  assert {
+    condition     = var.dmarc_fo == null || var.dmarc_ruf != null
+    error_message = "dmarc_fo controls when FORENSIC reports are generated, so it does nothing without dmarc_ruf. Either set dmarc_ruf or drop dmarc_fo, rather than leaving a tag that reads as configured but has no effect."
+  }
+}
+
 resource "cloudflare_dns_record" "dmarc" {
   count = var.dmarc_policy != null ? 1 : 0
 
@@ -258,9 +265,22 @@ resource "cloudflare_dns_record" "dmarc" {
   type    = "TXT"
   ttl     = 1
   comment = "${var.name_prefix}: DMARC policy"
+  # Tag order follows RFC 7489's own presentation: v and p first (v MUST be
+  # first, and some parsers are strict about it), then policy modifiers, then
+  # reporting. Every optional tag is OMITTED when null rather than written with
+  # its default value, because a tag that is present pins behaviour, while an
+  # absent one inherits whatever the RFC default becomes.
   content = join("; ", concat(
     ["v=DMARC1", "p=${var.dmarc_policy}"],
+    var.dmarc_sp != null ? ["sp=${var.dmarc_sp}"] : [],
+    var.dmarc_adkim != null ? ["adkim=${var.dmarc_adkim}"] : [],
+    var.dmarc_aspf != null ? ["aspf=${var.dmarc_aspf}"] : [],
+    var.dmarc_pct != null ? ["pct=${var.dmarc_pct}"] : [],
     var.dmarc_rua != null ? ["rua=${var.dmarc_rua}"] : [],
+    var.dmarc_ruf != null ? ["ruf=${var.dmarc_ruf}"] : [],
+    var.dmarc_fo != null ? ["fo=${var.dmarc_fo}"] : [],
+    var.dmarc_rf != null ? ["rf=${var.dmarc_rf}"] : [],
+    var.dmarc_ri != null ? ["ri=${var.dmarc_ri}"] : [],
   ))
 }
 
