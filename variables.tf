@@ -107,6 +107,12 @@ variable "rate_limit" {
   description = "Single rate-limit rule (free tier). Null disables. Put it on the abuse-prone path (waitlist)."
 }
 
+variable "manage_managed_waf" {
+  type        = bool
+  default     = true
+  description = "Deploy Cloudflare's managed WAF ruleset. Available on every plan including Free, but NOT enabled unless an entrypoint ruleset exists in the http_request_firewall_managed phase, so a zone can look hardened while none of it runs. Needs Zone WAF Read to resolve the ruleset id and Zone WAF Edit to deploy it."
+}
+
 # ── Custom WAF rules (free tier allows up to 5) ───────────────────────────
 variable "custom_firewall_rules" {
   type = list(object({

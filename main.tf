@@ -120,6 +120,63 @@ resource "cloudflare_ruleset" "custom_firewall" {
   }]
 }
 
+# ── Managed WAF (free tier) ───────────────────────────────────────────────
+# Cloudflare gives every zone, including Free, a managed ruleset covering common
+# exploit patterns. It is NOT deployed automatically: without an entrypoint
+# ruleset in this phase, none of it runs, and the dashboard gives no warning. A
+# zone can look thoroughly hardened (DNSSEC, HSTS, TLS 1.2+, rate limiting) while
+# the actual attack-pattern rules are switched off.
+#
+# The id is resolved by NAME rather than pinned, because a literal 32-char id in
+# config is opaque to a reader, and Cloudflare's own docs treat these ids as
+# account-visible values rather than stable public constants.
+data "cloudflare_rulesets" "managed" {
+  count = var.manage_managed_waf ? 1 : 0
+
+  zone_id = var.zone_id
+}
+
+locals {
+  # `.rulesets`, not `.result`: both exist and carry the same shape, but every
+  # attribute under `result` is marked deprecated in the v5 provider schema, so
+  # it would warn now and break on a later major.
+  managed_waf_id = try(one([
+    for r in data.cloudflare_rulesets.managed[0].rulesets :
+    r.id if r.kind == "managed" && r.phase == "http_request_firewall_managed"
+  ]), null)
+}
+
+# Fail loudly rather than silently deploying nothing. A count that quietly
+# resolves to 0 would leave the WAF off and the plan clean, which is the exact
+# failure this resource exists to end.
+check "managed_waf_available" {
+  assert {
+    condition     = !var.manage_managed_waf || local.managed_waf_id != null
+    error_message = "manage_managed_waf is true but no managed ruleset was found in the http_request_firewall_managed phase for this zone. Check the token has Zone WAF Read."
+  }
+}
+
+resource "cloudflare_ruleset" "managed_waf" {
+  count = var.manage_managed_waf && local.managed_waf_id != null ? 1 : 0
+
+  zone_id = var.zone_id
+  name    = "${var.name_prefix}-managed-waf"
+  kind    = "zone"
+  phase   = "http_request_firewall_managed"
+
+  rules = [{
+    ref         = "execute_managed_free"
+    description = "Execute the Cloudflare managed ruleset"
+    expression  = "true"
+    action      = "execute"
+    enabled     = true
+
+    action_parameters = {
+      id = local.managed_waf_id
+    }
+  }]
+}
+
 # ── DNSSEC ────────────────────────────────────────────────────────────────
 resource "cloudflare_zone_dnssec" "this" {
   count   = var.enable_dnssec ? 1 : 0
